@@ -119,6 +119,59 @@ jobs:
         path: |
           build/install/*
 
+  win-plugin-template-test:
+    runs-on: windows-2022
+    name: 🧪 Plugin Template Test
+    defaults:
+      run:
+        shell: msys2 {0}
+    needs: win
+    env:
+      IMHEX_SDK_PATH: "${{ github.workspace }}/out/sdk"
+    steps:
+      - name: 🧰 Checkout ImHex
+        uses: actions/checkout@v4
+        with:
+          path: imhex
+
+      - name: 🟦 Install msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: mingw64
+
+      - name: ⬇️ Install dependencies
+        run: |
+          set -x
+          imhex/dist/get_deps_msys2.sh
+
+      - name: 🧰 Checkout ImHex-Plugin-Template
+        uses: actions/checkout@v4
+        with:
+          repository: WerWolv/ImHex-Plugin-Template
+          submodules: recursive
+          path: template
+
+      - name: ⬇️ Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: Windows Portable x86_64
+          path: out
+
+      - name: 🛠️ Build
+        run: |
+          set -x
+          cd template
+          mkdir -p build
+          cd build
+  
+          cmake -G "Ninja"                                          \
+          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}                    \
+          -DIMHEX_USE_DEFAULT_BUILD_SETTINGS=ON                     \
+          -DUSE_SYSTEM_CAPSTONE=ON                                  \
+          ..
+          
+          ninja
+
   # MacOS build
   macos:
     runs-on: macos-12
@@ -153,7 +206,6 @@ jobs:
 
     - name: ⬇️ Install dependencies
       run: |
-        set -x
         brew reinstall python || brew link --overwrite python || true
         brew bundle --no-lock --file dist/Brewfile
         rm -rf /usr/local/Cellar/capstone
